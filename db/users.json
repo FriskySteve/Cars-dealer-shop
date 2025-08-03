@@ -1,10 +1,23 @@
 [
-    {
-      "id": "admin001",
-      "username": "admin",
-      "password": "admin123",
-      "role": "admin",
-      "balance": 10000
-    }
-  ]
-  
+  {
+    "id": "admin001",
+    "username": "admin",
+    "password": "admin123",
+    "role": "admin",
+    "balance": 10000
+  },
+  {
+    "id": "admin21754231042142",
+    "username": "admin2",
+    "password": "admin123",
+    "role": "user",
+    "balance": 50000
+  },
+  {
+    "id": "asrgdsfg1754235420104",
+    "username": "asrgdsfg",
+    "password": "asdfasdf",
+    "role": "user",
+    "balance": 50000
+  }
+]

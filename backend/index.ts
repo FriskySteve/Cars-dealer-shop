@@ -2,6 +2,8 @@ import { createServer, IncomingMessage, ServerResponse } from "http";
 import fs from "fs";
 import path from "path";
 import { Mimes } from "./types";
+import { getUsers, saveUsers } from "./db";
+import { User } from "./types";
 
 const PORT = 3000;
 
@@ -15,29 +17,32 @@ const sendFile = (res: ServerResponse, filePath: string) => {
   fs.readFile(filePath, (err, data) => {
     if (err) return res.writeHead(404).end("Not found");
     const ext = path.extname(filePath);
-    res.writeHead(200, { "Content-Type": MIME_TYPES[ext] || "text/plain" });
+    res.writeHead(200, {
+      "Content-Type": MIME_TYPES[ext] || "text/plain",
+    });
     res.end(data);
   });
 };
 
-const parseBody = (req: IncomingMessage) =>
-  new Promise((resolve) => {
-    let body = "";
-    req.on("data", (chunk) => (body += chunk));
+export async function getData(req: IncomingMessage): Promise<string> {
+  return new Promise((resolve) => {
+    let data = "";
+    req.on("data", (chunk) => {
+      data += chunk;
+    });
     req.on("end", () => {
-      try {
-        resolve(JSON.parse(body));
-      } catch {
-        resolve({});
-      }
+      resolve(data);
     });
   });
+}
 
 const server = createServer(
   async (req: IncomingMessage, res: ServerResponse) => {
     const pathname = req.url;
     const method = req.method;
     const frontendPath = path.join(__dirname, "..", "frontend");
+
+    // Static files
     if (method === "GET" && pathname === "/")
       return sendFile(res, `${frontendPath}/index.html`);
     if (method === "GET" && pathname?.startsWith("/style.css"))
@@ -45,7 +50,89 @@ const server = createServer(
     if (method === "GET" && pathname?.startsWith("/main.js"))
       return sendFile(res, `${frontendPath}/main.js`);
 
-    res.end(JSON.stringify({ status: "ok" }));
+    // SSE
+    if (method === "GET" && pathname === "/events") {
+      res.writeHead(200, {
+        "Content-Type": "text/event-stream",
+        "Cache-Control": "no-cache",
+        Connection: "keep-alive",
+      });
+      res.write("data: Witaj SSE!\n\n");
+      return;
+    }
+
+    // Register
+    if (method === "POST" && pathname === "/register") {
+      const data = await getData(req);
+      const { username, password } = JSON.parse(data);
+      if (!username || !password) {
+        res
+          .writeHead(400, { "Content-Type": "application/json" })
+          .end(
+            JSON.stringify({ error: "Błędna nazwa użytkownika, podaj inną." })
+          );
+        return;
+      }
+
+      const users = getUsers();
+      if (users.find((u) => u.username === username)) {
+        res
+          .writeHead(400, { "Content-Type": "application/json" })
+          .end(JSON.stringify({ error: "Użytkownik już istnieje." }));
+        return;
+      }
+
+      const newUser: User = {
+        id: `${username}${Date.now()}`,
+        username,
+        password,
+        role: "user",
+        balance: 50000,
+      };
+      users.push(newUser);
+      saveUsers(users);
+      res
+        .writeHead(201, { "Content-Type": "application/json" })
+        .end(JSON.stringify({ message: "Zarejestrowano pomyślnie." }));
+      return;
+    }
+
+    // Login
+    if (method === "POST" && pathname === "/login") {
+      const data = await getData(req);
+      const { username, password } = JSON.parse(data);
+      if (!username || !password) {
+        res
+          .writeHead(400, { "Content-Type": "application/json" })
+          .end(
+            JSON.stringify({ error: "Błędna nazwa użytkownika lub hasło." })
+          );
+        return;
+      }
+
+      const users = getUsers();
+      const user = users.find(
+        (u) => u.username === username && u.password === password
+      );
+      if (!user) {
+        res
+          .writeHead(401, { "Content-Type": "application/json" })
+          .end(JSON.stringify({ error: "Nieprawidłowe dane logowania." }));
+        return;
+      }
+
+      res.writeHead(200, { "Content-Type": "application/json" }).end(
+        JSON.stringify({
+          message: "Zalogowano pomyślnie.",
+          user: { id: user.id, username: user.username, role: user.role },
+        })
+      );
+      return;
+    }
+
+    // Fallback
+    res.writeHead(404, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ error: "Nie znaleziono ścieżki." }));
   }
 );
 
