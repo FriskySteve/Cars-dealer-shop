@@ -1,1 +1,62 @@
-[]
+[
+  {
+    "id": "car1",
+    "model": "Toyota Corolla",
+    "price": 32000,
+    "ownerId": ""
+  },
+  {
+    "id": "car2",
+    "model": "Volkswagen Golf",
+    "price": 35000,
+    "ownerId": ""
+  },
+  {
+    "id": "car3",
+    "model": "Ford Focus",
+    "price": 28000,
+    "ownerId": ""
+  },
+  {
+    "id": "car4",
+    "model": "Honda Civic",
+    "price": 34000,
+    "ownerId": ""
+  },
+  {
+    "id": "car5",
+    "model": "BMW 3 Series",
+    "price": 56000,
+    "ownerId": ""
+  },
+  {
+    "id": "car6",
+    "model": "Audi A4",
+    "price": 58000,
+    "ownerId": ""
+  },
+  {
+    "id": "car7",
+    "model": "Mercedes-Benz C-Class",
+    "price": 61000,
+    "ownerId": ""
+  },
+  {
+    "id": "car8",
+    "model": "Skoda Octavia",
+    "price": 29000,
+    "ownerId": ""
+  },
+  {
+    "id": "car9",
+    "model": "Kia Ceed",
+    "price": 26000,
+    "ownerId": ""
+  },
+  {
+    "id": "car10",
+    "model": "Hyundai i30",
+    "price": 27000,
+    "ownerId": ""
+  }
+]

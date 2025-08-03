@@ -8,6 +8,7 @@ const http_1 = require("http");
 const fs_1 = __importDefault(require("fs"));
 const path_1 = __importDefault(require("path"));
 const db_1 = require("./db");
+const auth_1 = require("./auth");
 const PORT = 3000;
 const MIME_TYPES = {
     ".html": "text/html",
@@ -35,6 +36,23 @@ async function getData(req) {
             resolve(data);
         });
     });
+}
+async function loginUser(res, req) {
+    const body = await getData(req);
+    const { username, password } = await JSON.parse(body);
+    const users = (0, db_1.getUsers)();
+    const user = users.find((u) => username === u.username && password === u.password);
+    if (!user)
+        res
+            .writeHead(401, { "content-type": "application/json" })
+            .end(JSON.stringify({ error: "Błędne dane do logowania." }));
+    else {
+        const token = (0, auth_1.generateToken)(user.id);
+        (0, auth_1.setAuthCookie)(res, token);
+        res
+            .writeHead(200, { "content-type": "application/json" })
+            .end(JSON.stringify({}));
+    }
 }
 const server = (0, http_1.createServer)(async (req, res) => {
     const pathname = req.url;
@@ -106,11 +124,37 @@ const server = (0, http_1.createServer)(async (req, res) => {
                 .end(JSON.stringify({ error: "Nieprawidłowe dane logowania." }));
             return;
         }
+        loginUser(res, req);
+        (0, auth_1.setAuthCookie)(res, (0, auth_1.generateToken)(user.id));
         res.writeHead(200, { "Content-Type": "application/json" }).end(JSON.stringify({
             message: "Zalogowano pomyślnie.",
             user: { id: user.id, username: user.username, role: user.role },
         }));
         return;
+    }
+    // Users
+    if (method === "GET" && pathname === "/users") {
+        const token = req.headers.cookie ? (0, auth_1.parseCookies)(req).token : null;
+        const user = token ? (0, auth_1.getUserFromToken)(token) : null;
+        if (!user) {
+            res
+                .writeHead(403, { "Content-Type": "application/json" })
+                .end(JSON.stringify({ error: "Brak uprawnień." }));
+            return;
+        }
+        else if (user.role === "admin") {
+            const users = (0, db_1.getUsers)();
+            res
+                .writeHead(200, { "Content-Type": "application/json" })
+                .end(JSON.stringify(users));
+            return;
+        }
+        else {
+            res
+                .writeHead(200, { "content-type": "application/json" })
+                .end(JSON.stringify(user));
+            return;
+        }
     }
     // Fallback
     res.writeHead(404, { "Content-Type": "application/json" });

@@ -4,6 +4,12 @@ import path from "path";
 import { Mimes } from "./types";
 import { getUsers, saveUsers } from "./db";
 import { User } from "./types";
+import {
+  generateToken,
+  setAuthCookie,
+  getUserFromToken,
+  parseCookies,
+} from "./auth";
 
 const PORT = 3000;
 
@@ -34,6 +40,32 @@ export async function getData(req: IncomingMessage): Promise<string> {
       resolve(data);
     });
   });
+}
+
+async function loginUser(
+  res: ServerResponse,
+  req: IncomingMessage
+): Promise<void> {
+  const body = await getData(req);
+  const { username, password } = await JSON.parse(body);
+  const users = getUsers();
+
+  const user = users.find(
+    (u) => username === u.username && password === u.password
+  );
+
+  if (!user)
+    res
+      .writeHead(401, { "content-type": "application/json" })
+      .end(JSON.stringify({ error: "Błędne dane do logowania." }));
+  else {
+    const token = generateToken(user.id);
+
+    setAuthCookie(res, token);
+    res
+      .writeHead(200, { "content-type": "application/json" })
+      .end(JSON.stringify({}));
+  }
 }
 
 const server = createServer(
@@ -120,7 +152,8 @@ const server = createServer(
           .end(JSON.stringify({ error: "Nieprawidłowe dane logowania." }));
         return;
       }
-
+      loginUser(res, req);
+      setAuthCookie(res, generateToken(user.id));
       res.writeHead(200, { "Content-Type": "application/json" }).end(
         JSON.stringify({
           message: "Zalogowano pomyślnie.",
@@ -128,6 +161,30 @@ const server = createServer(
         })
       );
       return;
+    }
+
+    // Users
+    if (method === "GET" && pathname === "/users") {
+      const token = req.headers.cookie ? parseCookies(req).token : null;
+      const user = token ? getUserFromToken(token) : null;
+
+      if (!user) {
+        res
+          .writeHead(403, { "Content-Type": "application/json" })
+          .end(JSON.stringify({ error: "Brak uprawnień." }));
+        return;
+      } else if (user.role === "admin") {
+        const users = getUsers();
+        res
+          .writeHead(200, { "Content-Type": "application/json" })
+          .end(JSON.stringify(users));
+        return;
+      } else {
+        res
+          .writeHead(200, { "content-type": "application/json" })
+          .end(JSON.stringify(user));
+        return;
+      }
     }
 
     // Fallback
