@@ -121,6 +121,94 @@ async function buyCar(res, req, pathname) {
             .end(JSON.stringify({ message: "Zakup samochodu powiódł się." }));
     }
 }
+async function deleteCar(res, req, carId) {
+    const cars = (0, db_1.getCars)();
+    const users = (0, db_1.getUsers)();
+    const token = req.headers.cookie ? (0, auth_1.parseCookies)(req).token : null;
+    const active_user = token ? (0, auth_1.getUserFromToken)(token) : null;
+    const user = users.find((u) => u.id === (active_user === null || active_user === void 0 ? void 0 : active_user.id));
+    const carToDelte = cars.find((c) => c.id === carId);
+    if ((user === null || user === void 0 ? void 0 : user.role) !== "admin") {
+        res
+            .writeHead(403, { "Content-Type": "application/json" })
+            .end(JSON.stringify({ error: "Brak uprawnień." }));
+        return;
+    }
+    else if (!carToDelte) {
+        res
+            .writeHead(404, { "Content-Type": "application/json" })
+            .end(JSON.stringify({ error: "Samochód nie znaleziony." }));
+        return;
+    }
+    else {
+        const updatedCars = cars.filter((c) => c.id !== carId);
+        (0, db_1.saveCars)(updatedCars);
+        res
+            .writeHead(200, { "Content-Type": "application/json" })
+            .end(JSON.stringify({ message: "Samochód został usunięty." }));
+    }
+}
+async function deleteUser(res, req, userId) {
+    const users = (0, db_1.getUsers)();
+    const userToDelete = users.find((u) => u.id === userId);
+    const token = req.headers.cookie ? (0, auth_1.parseCookies)(req).token : null;
+    const active_user = token ? (0, auth_1.getUserFromToken)(token) : null;
+    if ((active_user === null || active_user === void 0 ? void 0 : active_user.role) !== "admin") {
+        res
+            .writeHead(403, { "Content-Type": "application/json" })
+            .end(JSON.stringify({ error: "Brak uprawnień." }));
+        return;
+    }
+    else if (!userToDelete) {
+        res
+            .writeHead(404, { "Content-Type": "application/json" })
+            .end(JSON.stringify({ error: "Użytkownik nie znaleziony." }));
+        return;
+    }
+    else {
+        const updatedUsers = users.filter((u) => u.id !== userId);
+        (0, db_1.saveUsers)(updatedUsers);
+        res
+            .writeHead(200, { "Content-Type": "application/json" })
+            .end(JSON.stringify({ message: "Użytkownik został usunięty." }));
+    }
+}
+async function updateCars(res, req, carId) {
+    const cars = (0, db_1.getCars)();
+    const users = (0, db_1.getUsers)();
+    const token = req.headers.cookie ? (0, auth_1.parseCookies)(req).token : null;
+    const active_user = token ? (0, auth_1.getUserFromToken)(token) : null;
+    const user = users.find((u) => u.id === (active_user === null || active_user === void 0 ? void 0 : active_user.id));
+    const carToUpdate = cars.find((c) => c.id === carId);
+    if ((user === null || user === void 0 ? void 0 : user.role) !== "admin") {
+        res
+            .writeHead(403, { "Content-Type": "application/json" })
+            .end(JSON.stringify({ error: "Brak uprawnień." }));
+        return;
+    }
+    else if (!carToUpdate) {
+        res
+            .writeHead(404, { "Content-Type": "application/json" })
+            .end(JSON.stringify({ error: "Samochód nie znaleziony." }));
+        return;
+    }
+    else {
+        const data = await getData(req);
+        const { model, price } = JSON.parse(data);
+        if (!model || !price) {
+            res
+                .writeHead(400, { "Content-Type": "application/json" })
+                .end(JSON.stringify({ error: "Błędne dane." }));
+            return;
+        }
+        carToUpdate.model = model;
+        carToUpdate.price = price;
+        (0, db_1.saveCars)(cars);
+        res
+            .writeHead(200, { "Content-Type": "application/json" })
+            .end(JSON.stringify({ message: "Samochód został zaktualizowany." }));
+    }
+}
 const server = (0, http_1.createServer)(async (req, res) => {
     const pathname = req.url;
     const method = req.method;
@@ -257,6 +345,16 @@ const server = (0, http_1.createServer)(async (req, res) => {
     if (method === "POST" && (pathname === null || pathname === void 0 ? void 0 : pathname.endsWith("/buy"))) {
         await buyCar(res, req, pathname);
         return;
+    }
+    // Delete car
+    if (method === "DELETE" && (pathname === null || pathname === void 0 ? void 0 : pathname.startsWith("/cars"))) {
+        const carId = pathname.split("/")[2];
+        return deleteCar(res, req, carId);
+    }
+    // Delete user
+    if (method === "DELETE" && (pathname === null || pathname === void 0 ? void 0 : pathname.startsWith("/users"))) {
+        const userId = pathname.split("/")[2];
+        return deleteUser(res, req, userId);
     }
 });
 server.listen(PORT, () => {

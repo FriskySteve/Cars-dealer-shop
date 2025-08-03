@@ -144,24 +144,102 @@ async function buyCar(
 async function deleteCar(
   res: ServerResponse,
   req: IncomingMessage,
-  pathname: string
+  carId: string
 ) {
   const cars = getCars();
-  const carId = pathname.split("/")[2];
-  const carIndex = cars.findIndex((c) => c.id === carId);
+  const users = getUsers();
+  const token = req.headers.cookie ? parseCookies(req).token : null;
+  const active_user = token ? getUserFromToken(token) : null;
+  const user = users.find((u) => u.id === active_user?.id);
+  const carToDelte = cars.find((c) => c.id === carId);
 
-  if (carIndex === -1) {
+  if (user?.role !== "admin") {
+    res
+      .writeHead(403, { "Content-Type": "application/json" })
+      .end(JSON.stringify({ error: "Brak uprawnień." }));
+    return;
+  } else if (!carToDelte) {
     res
       .writeHead(404, { "Content-Type": "application/json" })
       .end(JSON.stringify({ error: "Samochód nie znaleziony." }));
     return;
+  } else {
+    const updatedCars = cars.filter((c) => c.id !== carId);
+    saveCars(updatedCars);
+    res
+      .writeHead(200, { "Content-Type": "application/json" })
+      .end(JSON.stringify({ message: "Samochód został usunięty." }));
   }
+}
 
-  cars.splice(carIndex, 1);
-  saveCars(cars);
-  res
-    .writeHead(200, { "Content-Type": "application/json" })
-    .end(JSON.stringify({ message: "Samochód został usunięty." }));
+async function deleteUser(
+  res: ServerResponse,
+  req: IncomingMessage,
+  userId: string
+) {
+  const users = getUsers();
+  const userToDelete = users.find((u) => u.id === userId);
+  const token = req.headers.cookie ? parseCookies(req).token : null;
+  const active_user = token ? getUserFromToken(token) : null;
+
+  if (active_user?.role !== "admin") {
+    res
+      .writeHead(403, { "Content-Type": "application/json" })
+      .end(JSON.stringify({ error: "Brak uprawnień." }));
+    return;
+  } else if (!userToDelete) {
+    res
+      .writeHead(404, { "Content-Type": "application/json" })
+      .end(JSON.stringify({ error: "Użytkownik nie znaleziony." }));
+    return;
+  } else {
+    const updatedUsers = users.filter((u) => u.id !== userId);
+    saveUsers(updatedUsers);
+    res
+      .writeHead(200, { "Content-Type": "application/json" })
+      .end(JSON.stringify({ message: "Użytkownik został usunięty." }));
+  }
+}
+
+async function updateCars(
+  res: ServerResponse,
+  req: IncomingMessage,
+  carId: string
+) {
+  const cars = getCars();
+  const users = getUsers();
+  const token = req.headers.cookie ? parseCookies(req).token : null;
+  const active_user = token ? getUserFromToken(token) : null;
+  const user = users.find((u) => u.id === active_user?.id);
+  const carToUpdate = cars.find((c) => c.id === carId);
+
+  if (user?.role !== "admin") {
+    res
+      .writeHead(403, { "Content-Type": "application/json" })
+      .end(JSON.stringify({ error: "Brak uprawnień." }));
+    return;
+  } else if (!carToUpdate) {
+    res
+      .writeHead(404, { "Content-Type": "application/json" })
+      .end(JSON.stringify({ error: "Samochód nie znaleziony." }));
+    return;
+  } else {
+    const data = await getData(req);
+    const { model, price } = JSON.parse(data);
+    if (!model || !price) {
+      res
+        .writeHead(400, { "Content-Type": "application/json" })
+        .end(JSON.stringify({ error: "Błędne dane." }));
+      return;
+    }
+
+    carToUpdate.model = model;
+    carToUpdate.price = price;
+    saveCars(cars);
+    res
+      .writeHead(200, { "Content-Type": "application/json" })
+      .end(JSON.stringify({ message: "Samochód został zaktualizowany." }));
+  }
 }
 
 const server = createServer(
@@ -319,6 +397,18 @@ const server = createServer(
     if (method === "POST" && pathname?.endsWith("/buy")) {
       await buyCar(res, req, pathname);
       return;
+    }
+
+    // Delete car
+    if (method === "DELETE" && pathname?.startsWith("/cars")) {
+      const carId = pathname.split("/")[2];
+      return deleteCar(res, req, carId);
+    }
+
+    // Delete user
+    if (method === "DELETE" && pathname?.startsWith("/users")) {
+      const userId = pathname.split("/")[2];
+      return deleteUser(res, req, userId);
     }
   }
 );
