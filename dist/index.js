@@ -54,6 +54,21 @@ async function loginUser(res, req) {
             .end(JSON.stringify({}));
     }
 }
+async function loadCars(res, req) {
+    const data = (0, db_1.getCars)();
+    if (!data) {
+        res
+            .writeHead(400, { "content-type": "application/json" })
+            .end({ error: "Błąd przy pobieraniu danych samochodów z bazy danych." });
+        return;
+    }
+    else {
+        res
+            .writeHead(200, { "content-type": "application/json" })
+            .end(JSON.stringify(data));
+        return;
+    }
+}
 const server = (0, http_1.createServer)(async (req, res) => {
     const pathname = req.url;
     const method = req.method;
@@ -153,6 +168,21 @@ const server = (0, http_1.createServer)(async (req, res) => {
             res
                 .writeHead(200, { "content-type": "application/json" })
                 .end(JSON.stringify(user));
+            return;
+        }
+    }
+    //Cars
+    if (method === "GET" && pathname === "/cars") {
+        const token = req.headers.cookie ? (0, auth_1.parseCookies)(req).token : null;
+        const user = token ? (0, auth_1.getUserFromToken)(token) : null;
+        if (!user) {
+            res
+                .writeHead(403, { "Content-Type": "application/json" })
+                .end(JSON.stringify({ error: "Brak uprawnień." }));
+            return;
+        }
+        else {
+            await loadCars(res, req);
             return;
         }
     }

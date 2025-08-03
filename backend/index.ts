@@ -2,7 +2,7 @@ import { createServer, IncomingMessage, ServerResponse } from "http";
 import fs from "fs";
 import path from "path";
 import { Mimes } from "./types";
-import { getUsers, saveUsers } from "./db";
+import { getUsers, saveUsers, getCars } from "./db";
 import { User } from "./types";
 import {
   generateToken,
@@ -65,6 +65,21 @@ async function loginUser(
     res
       .writeHead(200, { "content-type": "application/json" })
       .end(JSON.stringify({}));
+  }
+}
+
+async function loadCars(res: ServerResponse, req: IncomingMessage) {
+  const data = getCars();
+  if (!data) {
+    res
+      .writeHead(400, { "content-type": "application/json" })
+      .end({ error: "Błąd przy pobieraniu danych samochodów z bazy danych." });
+    return;
+  } else {
+    res
+      .writeHead(200, { "content-type": "application/json" })
+      .end(JSON.stringify(data));
+    return;
   }
 }
 
@@ -183,6 +198,22 @@ const server = createServer(
         res
           .writeHead(200, { "content-type": "application/json" })
           .end(JSON.stringify(user));
+        return;
+      }
+    }
+
+    //Cars
+    if (method === "GET" && pathname === "/cars") {
+      const token = req.headers.cookie ? parseCookies(req).token : null;
+      const user = token ? getUserFromToken(token) : null;
+
+      if (!user) {
+        res
+          .writeHead(403, { "Content-Type": "application/json" })
+          .end(JSON.stringify({ error: "Brak uprawnień." }));
+        return;
+      } else {
+        await loadCars(res, req);
         return;
       }
     }
