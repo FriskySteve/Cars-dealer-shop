@@ -69,6 +69,22 @@ async function loadCars(res, req) {
         return;
     }
 }
+async function addCar(res, req) {
+    const data = await getData(req);
+    const { model, price } = await JSON.parse(data);
+    const newCar = {
+        id: `car${Date.now()}`,
+        model,
+        price,
+        ownerId: "",
+    };
+    const cars = (0, db_1.getCars)();
+    cars.push(newCar);
+    (0, db_1.saveCars)(cars);
+    res
+        .writeHead(201, { "content-type": "application/json" })
+        .end(JSON.stringify(newCar));
+}
 const server = (0, http_1.createServer)(async (req, res) => {
     const pathname = req.url;
     const method = req.method;
@@ -186,9 +202,24 @@ const server = (0, http_1.createServer)(async (req, res) => {
             return;
         }
     }
-    // Fallback
-    res.writeHead(404, { "Content-Type": "application/json" });
-    res.end(JSON.stringify({ error: "Nie znaleziono ścieżki." }));
+    // Add car
+    if (method === "POST" && pathname === "/cars") {
+        const token = req.headers.cookie ? (0, auth_1.parseCookies)(req).token : null;
+        const user = token ? (0, auth_1.getUserFromToken)(token) : null;
+        if ((user === null || user === void 0 ? void 0 : user.role) !== "admin") {
+            res
+                .writeHead(403, { "Content-Type": "application/json" })
+                .end(JSON.stringify({ error: "Brak uprawnień." }));
+            return;
+        }
+        else {
+            await addCar(res, req);
+            return;
+        }
+        // Fallback
+        res.writeHead(404, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ error: "Nie znaleziono ścieżki." }));
+    }
 });
 server.listen(PORT, () => {
     console.log(`Server running on http://localhost:${PORT}`);

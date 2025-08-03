@@ -1,8 +1,8 @@
 import { createServer, IncomingMessage, ServerResponse } from "http";
 import fs from "fs";
 import path from "path";
-import { Mimes } from "./types";
-import { getUsers, saveUsers, getCars } from "./db";
+import { Car, Mimes } from "./types";
+import { getUsers, saveUsers, getCars, saveCars } from "./db";
 import { User } from "./types";
 import {
   generateToken,
@@ -81,6 +81,24 @@ async function loadCars(res: ServerResponse, req: IncomingMessage) {
       .end(JSON.stringify(data));
     return;
   }
+}
+
+async function addCar(res: ServerResponse, req: IncomingMessage) {
+  const data = await getData(req);
+  const { model, price } = await JSON.parse(data);
+  const newCar: Car = {
+    id: `car${Date.now()}`,
+    model,
+    price,
+    ownerId: "",
+  }
+  const cars = getCars();
+
+  cars.push(newCar);
+  saveCars(cars);
+  res
+    .writeHead(201, { "content-type": "application/json" })
+    .end(JSON.stringify(newCar));
 }
 
 const server = createServer(
@@ -217,6 +235,21 @@ const server = createServer(
         return;
       }
     }
+
+    // Add car
+    if (method === "POST" && pathname === "/cars") {
+      const token = req.headers.cookie ? parseCookies(req).token : null;
+      const user = token ? getUserFromToken(token) : null;
+
+      if (user?.role !== "admin") {
+        res
+          .writeHead(403, { "Content-Type": "application/json" })
+          .end(JSON.stringify({ error: "Brak uprawnień." }));
+        return;
+      } else {
+        await addCar(res, req);
+        return;
+      }
 
     // Fallback
     res.writeHead(404, { "Content-Type": "application/json" });

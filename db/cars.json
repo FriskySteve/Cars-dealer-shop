@@ -58,5 +58,11 @@
     "model": "Hyundai i30",
     "price": 27000,
     "ownerId": ""
+  },
+  {
+    "id": "car1754240934352",
+    "model": "bmw2",
+    "price": 12311,
+    "ownerId": ""
   }
 ]
