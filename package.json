@@ -1,0 +1,18 @@
+{
+  "name": "cars-dealer-shop",
+  "version": "1.0.0",
+  "description": "## Opis Projekt umożliwia rejestrację, logowanie, zarządzanie użytkownikami i samochodami oraz symulację zakupu samochodów.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Michal Stasiak",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/node": "^24.1.0"
+  },
+  "dependencies": {
+    "undici-types": "^7.8.0"
+  },
+  "keywords": []
+}
