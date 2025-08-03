@@ -76,7 +76,7 @@ async function addCar(res, req) {
         id: `car${Date.now()}`,
         model,
         price,
-        ownerId: "",
+        ownerId: [""],
     };
     const cars = (0, db_1.getCars)();
     cars.push(newCar);
@@ -84,6 +84,42 @@ async function addCar(res, req) {
     res
         .writeHead(201, { "content-type": "application/json" })
         .end(JSON.stringify(newCar));
+}
+async function buyCar(res, req, pathname) {
+    const cars = (0, db_1.getCars)();
+    const users = (0, db_1.getUsers)();
+    const carId = pathname.split("/")[2];
+    const token = req.headers.cookie ? (0, auth_1.parseCookies)(req).token : null;
+    const car = cars.find((c) => c.id === carId);
+    const active_user = token ? (0, auth_1.getUserFromToken)(token) : null;
+    const user = users.find((u) => u.id === (active_user === null || active_user === void 0 ? void 0 : active_user.id));
+    if (!user) {
+        res
+            .writeHead(403, { "Content-Type": "application/json" })
+            .end(JSON.stringify({ error: "Brak uprawnień." }));
+        return;
+    }
+    else if (!car) {
+        res
+            .writeHead(404, { "content-type": "application/json" })
+            .end(JSON.stringify({ error: "Samochód nie znaleziony." }));
+        return;
+    }
+    else if (user.balance < car.price) {
+        res
+            .writeHead(400, { "content-type": "application/json" })
+            .end(JSON.stringify({ error: "Niewystarczające środki na koncie." }));
+        return;
+    }
+    else {
+        user.balance -= car.price;
+        car.ownerId.push(user.id);
+        (0, db_1.saveUsers)(users);
+        (0, db_1.saveCars)(cars);
+        res
+            .writeHead(200, { "content-type": "application/json" })
+            .end(JSON.stringify({ message: "Zakup samochodu powiódł się." }));
+    }
 }
 const server = (0, http_1.createServer)(async (req, res) => {
     const pathname = req.url;
@@ -216,9 +252,11 @@ const server = (0, http_1.createServer)(async (req, res) => {
             await addCar(res, req);
             return;
         }
-        // Fallback
-        res.writeHead(404, { "Content-Type": "application/json" });
-        res.end(JSON.stringify({ error: "Nie znaleziono ścieżki." }));
+    }
+    // Buy car
+    if (method === "POST" && (pathname === null || pathname === void 0 ? void 0 : pathname.endsWith("/buy"))) {
+        await buyCar(res, req, pathname);
+        return;
     }
 });
 server.listen(PORT, () => {

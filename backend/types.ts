@@ -10,7 +10,7 @@ export interface Car {
   id: string;
   model: string;
   price: number;
-  ownerId: string;
+  ownerId: string[];
 }
 
 export interface Mimes {

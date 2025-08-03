@@ -11,13 +11,20 @@
     "username": "admin2",
     "password": "admin123",
     "role": "user",
-    "balance": 50000
+    "balance": 22000
   },
   {
     "id": "asrgdsfg1754235420104",
-    "username": "asrgdsfg",
-    "password": "asdfasdf",
+    "username": "adam ",
+    "password": "adam",
     "role": "user",
     "balance": 50000
+  },
+  {
+    "id": "adas1754244475886",
+    "username": "adas",
+    "password": "adas",
+    "role": "user",
+    "balance": 21980
   }
 ]

@@ -90,8 +90,8 @@ async function addCar(res: ServerResponse, req: IncomingMessage) {
     id: `car${Date.now()}`,
     model,
     price,
-    ownerId: "",
-  }
+    ownerId: [""],
+  };
   const cars = getCars();
 
   cars.push(newCar);
@@ -99,6 +99,69 @@ async function addCar(res: ServerResponse, req: IncomingMessage) {
   res
     .writeHead(201, { "content-type": "application/json" })
     .end(JSON.stringify(newCar));
+}
+
+async function buyCar(
+  res: ServerResponse,
+  req: IncomingMessage,
+  pathname: string
+) {
+  const cars = getCars();
+  const users = getUsers();
+  const carId = pathname.split("/")[2];
+  const token = req.headers.cookie ? parseCookies(req).token : null;
+  const car = cars.find((c) => c.id === carId);
+  const active_user = token ? getUserFromToken(token) : null;
+  const user = users.find((u) => u.id === active_user?.id);
+
+  if (!user) {
+    res
+      .writeHead(403, { "Content-Type": "application/json" })
+      .end(JSON.stringify({ error: "Brak uprawnień." }));
+    return;
+  } else if (!car) {
+    res
+      .writeHead(404, { "content-type": "application/json" })
+      .end(JSON.stringify({ error: "Samochód nie znaleziony." }));
+    return;
+  } else if (user.balance < car.price) {
+    res
+      .writeHead(400, { "content-type": "application/json" })
+      .end(JSON.stringify({ error: "Niewystarczające środki na koncie." }));
+    return;
+  } else {
+    user.balance -= car.price;
+    car.ownerId.push(user.id);
+    saveUsers(users);
+    saveCars(cars);
+
+    res
+      .writeHead(200, { "content-type": "application/json" })
+      .end(JSON.stringify({ message: "Zakup samochodu powiódł się." }));
+  }
+}
+
+async function deleteCar(
+  res: ServerResponse,
+  req: IncomingMessage,
+  pathname: string
+) {
+  const cars = getCars();
+  const carId = pathname.split("/")[2];
+  const carIndex = cars.findIndex((c) => c.id === carId);
+
+  if (carIndex === -1) {
+    res
+      .writeHead(404, { "Content-Type": "application/json" })
+      .end(JSON.stringify({ error: "Samochód nie znaleziony." }));
+    return;
+  }
+
+  cars.splice(carIndex, 1);
+  saveCars(cars);
+  res
+    .writeHead(200, { "Content-Type": "application/json" })
+    .end(JSON.stringify({ message: "Samochód został usunięty." }));
 }
 
 const server = createServer(
@@ -250,10 +313,13 @@ const server = createServer(
         await addCar(res, req);
         return;
       }
+    }
 
-    // Fallback
-    res.writeHead(404, { "Content-Type": "application/json" });
-    res.end(JSON.stringify({ error: "Nie znaleziono ścieżki." }));
+    // Buy car
+    if (method === "POST" && pathname?.endsWith("/buy")) {
+      await buyCar(res, req, pathname);
+      return;
+    }
   }
 );
 
