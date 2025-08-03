@@ -209,6 +209,58 @@ async function updateCars(res, req, carId) {
             .end(JSON.stringify({ message: "Samochód został zaktualizowany." }));
     }
 }
+async function updateUser(res, req, userId) {
+    const users = (0, db_1.getUsers)();
+    const token = req.headers.cookie ? (0, auth_1.parseCookies)(req).token : null;
+    const active_user = token ? (0, auth_1.getUserFromToken)(token) : null;
+    const user = users.find((u) => u.id === (active_user === null || active_user === void 0 ? void 0 : active_user.id));
+    const userToUpdate = users.find((u) => u.id === userId);
+    if ((user === null || user === void 0 ? void 0 : user.role) !== "admin") {
+        res
+            .writeHead(403, { "Content-Type": "application/json" })
+            .end(JSON.stringify({ error: "Brak uprawnień." }));
+        return;
+    }
+    else if (!userToUpdate) {
+        res
+            .writeHead(404, { "Content-Type": "application/json" })
+            .end(JSON.stringify({ error: "Użytkownik nie znaleziony." }));
+        return;
+    }
+    else if (user.role === "admin") {
+        const data = await getData(req);
+        const { username, password, role } = JSON.parse(data);
+        if (!username || !password || !role) {
+            res
+                .writeHead(400, { "Content-Type": "application/json" })
+                .end(JSON.stringify({ error: "Błędne dane." }));
+            return;
+        }
+        userToUpdate.username = username;
+        userToUpdate.password = password;
+        userToUpdate.role = role;
+        (0, db_1.saveUsers)(users);
+        res
+            .writeHead(200, { "Content-Type": "application/json" })
+            .end(JSON.stringify({ message: "Użytkownik został zaktualizowany." }));
+    }
+    else if (user.role === "user") {
+        const data = await getData(req);
+        const { username, password } = JSON.parse(data);
+        if (!username || !password) {
+            res
+                .writeHead(400, { "Content-Type": "application/json" })
+                .end(JSON.stringify({ error: "Błędne dane." }));
+            return;
+        }
+        userToUpdate.username = username;
+        userToUpdate.password = password;
+        (0, db_1.saveUsers)(users);
+        res
+            .writeHead(200, { "Content-Type": "application/json" })
+            .end(JSON.stringify({ message: "Użytkownik został zaktualizowany." }));
+    }
+}
 const server = (0, http_1.createServer)(async (req, res) => {
     const pathname = req.url;
     const method = req.method;
@@ -355,6 +407,16 @@ const server = (0, http_1.createServer)(async (req, res) => {
     if (method === "DELETE" && (pathname === null || pathname === void 0 ? void 0 : pathname.startsWith("/users"))) {
         const userId = pathname.split("/")[2];
         return deleteUser(res, req, userId);
+    }
+    // Update car
+    if (method === "PUT" && (pathname === null || pathname === void 0 ? void 0 : pathname.startsWith("/cars"))) {
+        const carId = pathname.split("/")[2];
+        return updateCars(res, req, carId);
+    }
+    // Update user
+    if (method === "PUT" && (pathname === null || pathname === void 0 ? void 0 : pathname.startsWith("/users"))) {
+        const userId = pathname.split("/")[2];
+        return updateUser(res, req, userId);
     }
 });
 server.listen(PORT, () => {

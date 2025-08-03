@@ -242,6 +242,63 @@ async function updateCars(
   }
 }
 
+async function updateUser(
+  res: ServerResponse,
+  req: IncomingMessage,
+  userId: string
+) {
+  const users = getUsers();
+  const token = req.headers.cookie ? parseCookies(req).token : null;
+  const active_user = token ? getUserFromToken(token) : null;
+  const user = users.find((u) => u.id === active_user?.id);
+  const userToUpdate = users.find((u) => u.id === userId);
+
+  if (user?.role !== "admin") {
+    res
+      .writeHead(403, { "Content-Type": "application/json" })
+      .end(JSON.stringify({ error: "Brak uprawnień." }));
+    return;
+  } else if (!userToUpdate) {
+    res
+      .writeHead(404, { "Content-Type": "application/json" })
+      .end(JSON.stringify({ error: "Użytkownik nie znaleziony." }));
+    return;
+  } else if (user.role === "admin") {
+    const data = await getData(req);
+    const { username, password, role } = JSON.parse(data);
+    if (!username || !password || !role) {
+      res
+        .writeHead(400, { "Content-Type": "application/json" })
+        .end(JSON.stringify({ error: "Błędne dane." }));
+      return;
+    }
+
+    userToUpdate.username = username;
+    userToUpdate.password = password;
+    userToUpdate.role = role;
+    saveUsers(users);
+    res
+      .writeHead(200, { "Content-Type": "application/json" })
+      .end(JSON.stringify({ message: "Użytkownik został zaktualizowany." }));
+  } else if (user.role === "user") {
+    const data = await getData(req);
+    const { username, password } = JSON.parse(data);
+    if (!username || !password) {
+      res
+        .writeHead(400, { "Content-Type": "application/json" })
+        .end(JSON.stringify({ error: "Błędne dane." }));
+      return;
+    }
+
+    userToUpdate.username = username;
+    userToUpdate.password = password;
+    saveUsers(users);
+    res
+      .writeHead(200, { "Content-Type": "application/json" })
+      .end(JSON.stringify({ message: "Użytkownik został zaktualizowany." }));
+  }
+}
+
 const server = createServer(
   async (req: IncomingMessage, res: ServerResponse) => {
     const pathname = req.url;
@@ -409,6 +466,18 @@ const server = createServer(
     if (method === "DELETE" && pathname?.startsWith("/users")) {
       const userId = pathname.split("/")[2];
       return deleteUser(res, req, userId);
+    }
+
+    // Update car
+    if (method === "PUT" && pathname?.startsWith("/cars")) {
+      const carId = pathname.split("/")[2];
+      return updateCars(res, req, carId);
+    }
+
+    // Update user
+    if (method === "PUT" && pathname?.startsWith("/users")) {
+      const userId = pathname.split("/")[2];
+      return updateUser(res, req, userId);
     }
   }
 );
