@@ -253,7 +253,7 @@ async function updateUser(
   const user = users.find((u) => u.id === active_user?.id);
   const userToUpdate = users.find((u) => u.id === userId);
 
-  if (user?.role !== "admin") {
+  if (!user) {
     res
       .writeHead(403, { "Content-Type": "application/json" })
       .end(JSON.stringify({ error: "Brak uprawnień." }));
